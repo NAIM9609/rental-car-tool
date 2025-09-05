@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: rental_car_db
+      POSTGRES_USER: rental_user
+      POSTGRES_PASSWORD: rental_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rental-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rental_user -d rental_car_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: rental_user
+      DB_PASSWORD: rental_password
+      DB_NAME: rental_car_db
+      DB_SSLMODE: disable
+      PORT: 8080
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rental-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:8080
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - rental-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - rental-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  rental-network:
+    driver: bridge
