@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -19,12 +20,59 @@ func NewCarHandler(db *gorm.DB) *CarHandler {
 func (h *CarHandler) GetCars(c *gin.Context) {
 	var cars []models.Car
 	
-	if err := h.db.Preload("MonthlyPrices").Where("available = ?", true).Find(&cars).Error; err != nil {
+	// Parse search parameters
+	pickupDate := c.Query("pickup_date")
+	dropoffDate := c.Query("dropoff_date")
+	pickupLocation := c.Query("pickup_location")
+	dropoffLocation := c.Query("dropoff_location")
+	
+	// Base query - get all available cars
+	query := h.db.Preload("MonthlyPrices").Where("available = ?", true)
+	
+	// If date range is provided, filter cars based on availability
+	if pickupDate != "" && dropoffDate != "" {
+		startDate, err1 := time.Parse("2006-01-02", pickupDate)
+		endDate, err2 := time.Parse("2006-01-02", dropoffDate)
+		
+		if err1 == nil && err2 == nil {
+			// Find cars that are NOT booked during the requested period
+			// Using a subquery to exclude cars with conflicting bookings
+			query = query.Where("id NOT IN (?)", 
+				h.db.Model(&models.Booking{}).
+					Select("car_id").
+					Where("status != ? AND ((start_date <= ? AND end_date >= ?) OR (start_date <= ? AND end_date >= ?) OR (start_date >= ? AND end_date <= ?))",
+						"cancelled",
+						startDate, startDate,
+						endDate, endDate,
+						startDate, endDate))
+		}
+	}
+	
+	if err := query.Find(&cars).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cars"})
 		return
 	}
 	
-	c.JSON(http.StatusOK, cars)
+	// Add search metadata to response if search parameters were provided
+	response := gin.H{
+		"cars": cars,
+	}
+	
+	if pickupDate != "" || dropoffDate != "" || pickupLocation != "" || dropoffLocation != "" {
+		response["search_criteria"] = gin.H{
+			"pickup_date":     pickupDate,
+			"dropoff_date":    dropoffDate,
+			"pickup_location": pickupLocation,
+			"dropoff_location": dropoffLocation,
+		}
+	}
+	
+	// If no search parameters, just return the cars array for backward compatibility
+	if pickupDate == "" && dropoffDate == "" && pickupLocation == "" && dropoffLocation == "" {
+		c.JSON(http.StatusOK, cars)
+	} else {
+		c.JSON(http.StatusOK, response)
+	}
 }
 
 func (h *CarHandler) GetCar(c *gin.Context) {

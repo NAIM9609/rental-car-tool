@@ -5,12 +5,32 @@ import Link from 'next/link'
 import { Card } from 'primereact/card'
 import { Button } from 'primereact/button'
 import { Tag } from 'primereact/tag'
+import { SearchParams } from './SearchForm'
 
 interface CarCardProps {
   car: Car
+  searchParams?: SearchParams
 }
 
-export default function CarCard({ car }: CarCardProps) {
+export default function CarCard({ car, searchParams }: CarCardProps) {
+  // Build booking URL with search parameters
+  const buildBookingUrl = () => {
+    let url = `/booking/${car.id}`
+    
+    if (searchParams) {
+      const params = new URLSearchParams()
+      params.set('pickup_date', searchParams.pickupDate)
+      params.set('dropoff_date', searchParams.dropoffDate)
+      params.set('pickup_location', searchParams.pickupLocation)
+      params.set('dropoff_location', searchParams.dropoffLocation)
+      params.set('car_id', car.id)
+      
+      url += `?${params.toString()}`
+    }
+    
+    return url
+  }
+
   return (
     <Card className="overflow-hidden">
       <div className="relative h-40 bg-surface-100 flex items-center justify-center">
@@ -62,7 +82,7 @@ export default function CarCard({ car }: CarCardProps) {
             <div className="text-xs text-color-secondary">al giorno</div>
           </div>
           {car.available ? (
-            <Link href={`/booking/${car.id}`}>
+            <Link href={buildBookingUrl()}>
               <Button label="Prenota Subito" icon="pi pi-arrow-right" />
             </Link>
           ) : (

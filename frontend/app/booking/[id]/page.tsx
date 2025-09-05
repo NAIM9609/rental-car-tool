@@ -272,6 +272,63 @@ export default function BookingPage() {
     fetchCar()
   }, [fetchCar])
 
+  // Parse URL parameters for pre-populating the form
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      
+      const pickupDateParam = urlParams.get('pickup_date')
+      const dropoffDateParam = urlParams.get('dropoff_date')
+      const pickupLocationParam = urlParams.get('pickup_location')
+      const dropoffLocationParam = urlParams.get('dropoff_location')
+      
+      // Pre-populate dates if provided
+      if (pickupDateParam) {
+        const date = new Date(pickupDateParam)
+        setPickupDate(date.toISOString().split('T')[0])
+        // Set default time if not provided
+        if (!urlParams.get('pickup_time')) {
+          setPickupTime('10:00')
+        }
+      }
+      
+      if (dropoffDateParam) {
+        const date = new Date(dropoffDateParam)
+        setDropoffDate(date.toISOString().split('T')[0])
+        // Set default time if not provided
+        if (!urlParams.get('dropoff_time')) {
+          setDropoffTime('17:00')
+        }
+      }
+      
+      // Pre-populate locations if provided
+      if (pickupLocationParam) {
+        setPickupLocation(pickupLocationParam)
+      }
+      
+      if (dropoffLocationParam) {
+        setDropoffLocation(dropoffLocationParam)
+      }
+      
+      // Handle extras array from URL (extras[0]=14&extras[1]=18)
+      const extrasParams = urlParams.getAll('extras[]')
+      if (extrasParams.length > 0) {
+        // We'll need to wait for availableExtras to be loaded to match IDs
+        const preSelectedExtraIds = extrasParams
+        
+        // Set a timeout to allow availableExtras to load first
+        setTimeout(() => {
+          setSelectedExtras(prev => {
+            const newExtras = availableExtras.filter(extra => 
+              preSelectedExtraIds.includes(extra.id)
+            )
+            return [...prev, ...newExtras]
+          })
+        }, 500)
+      }
+    }
+  }, [availableExtras])
+
   useEffect(() => {
     // fetch locations and extras from backend
     const base = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080'
