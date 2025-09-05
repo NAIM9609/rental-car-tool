@@ -7,6 +7,7 @@ import { Calendar } from 'primereact/calendar'
 import { Dropdown } from 'primereact/dropdown'
 import { Location } from '../types/car'
 import { useRouter } from 'next/navigation'
+import { saveSearchSession, clearExpiredSessions } from '../utils/searchSession'
 
 interface SearchFormProps {
   onSearch: (searchParams: SearchParams) => void
@@ -41,6 +42,9 @@ export default function SearchForm({ onSearch }: SearchFormProps) {
       }
     }
     fetchLocations()
+    
+    // Clear expired search sessions
+    clearExpiredSessions()
   }, [])
 
   // Parse URL parameters on component mount
@@ -83,12 +87,16 @@ export default function SearchForm({ onSearch }: SearchFormProps) {
       dropoffLocation
     }
 
-    // Update URL with search parameters
+    // Save search session and get ID
+    const searchId = saveSearchSession(searchParams)
+
+    // Update URL with search parameters including search_id
     const params = new URLSearchParams()
     params.set('pickup_date', pickupDate.toISOString())
     params.set('dropoff_date', dropoffDate.toISOString())
     params.set('pc', pickupLocation)
     params.set('dc', dropoffLocation)
+    params.set('search_id', searchId)
     
     router.push(`/?${params.toString()}`)
     

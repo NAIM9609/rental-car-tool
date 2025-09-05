@@ -25,6 +25,15 @@ export default function CarCard({ car, searchParams }: CarCardProps) {
       params.set('dropoff_location', searchParams.dropoffLocation)
       params.set('car_id', car.id)
       
+      // Add search_id if available from current URL
+      if (typeof window !== 'undefined') {
+        const currentParams = new URLSearchParams(window.location.search)
+        const searchId = currentParams.get('search_id')
+        if (searchId) {
+          params.set('search_id', searchId)
+        }
+      }
+      
       url += `?${params.toString()}`
     }
     

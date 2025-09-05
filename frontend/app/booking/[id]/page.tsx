@@ -311,16 +311,21 @@ export default function BookingPage() {
       }
       
       // Handle extras array from URL (extras[0]=14&extras[1]=18)
-      const extrasParams = urlParams.getAll('extras[]')
+      const extrasParams: string[] = []
+      
+      // Check for both formats: extras[0]=14 and extras[]=14
+      urlParams.forEach((value, key) => {
+        if (key.startsWith('extras[') && key.endsWith(']')) {
+          extrasParams.push(value)
+        }
+      })
+      
       if (extrasParams.length > 0) {
-        // We'll need to wait for availableExtras to be loaded to match IDs
-        const preSelectedExtraIds = extrasParams
-        
         // Set a timeout to allow availableExtras to load first
         setTimeout(() => {
           setSelectedExtras(prev => {
             const newExtras = availableExtras.filter(extra => 
-              preSelectedExtraIds.includes(extra.id)
+              extrasParams.includes(extra.id)
             )
             return [...prev, ...newExtras]
           })

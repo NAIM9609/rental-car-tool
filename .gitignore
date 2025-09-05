@@ -149,3 +149,4 @@ go.work
 backend/main
 frontend/.next/
 dist/
+backend/rental-car-backend
